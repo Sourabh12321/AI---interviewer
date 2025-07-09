@@ -8,6 +8,7 @@ const ResumeUpload = ({ onResumeParsed }) => {
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
+    
     setError(null);
   };
 

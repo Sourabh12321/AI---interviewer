@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useSelector } from 'react-redux';
 
-const InterviewSession = ({ resumeText }) => {
+const InterviewSession = () => {
+    const data = useSelector((state) => state);
     const [qaHistory, setQaHistory] = useState([]);
     const [userAnswer, setUserAnswer] = useState('');
     const [loading, setLoading] = useState(false);

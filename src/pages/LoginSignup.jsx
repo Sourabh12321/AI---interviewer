@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch,useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux';
+// import { useNavigate } from "react-router-dom";
 import "../css/LoginSignup.css";
 import { login, sendOtp, signup } from "../redux/slice/authSlice";
+import { useNavigate } from "react-router-dom";
 
 const LoginSignupToggle = () => {
     const dispatch = useDispatch();
-    const LoginStore = useSelector((store)=>store?.auth);
+    const navigate = useNavigate();
+    const LoginStore = useSelector((store) => store?.auth);
+
     const [isSignup, setIsSignup] = useState(false);
     const [showOtpField, setShowOtpField] = useState(false);
     const [formData, setFormData] = useState({
@@ -14,41 +18,80 @@ const LoginSignupToggle = () => {
         password: "",
         otp: "",
     });
+    const [errors, setErrors] = useState({});
 
     const handleChange = (e) => {
         setFormData((prev) => ({
             ...prev,
             [e.target.name]: e.target.value,
         }));
+        setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
     };
-    console.log('LoginStore',LoginStore)
+
+    const validate = () => {
+        const newErrors = {};
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (isSignup && !showOtpField) {
+            if (!formData.name || formData.name.trim().length < 3) {
+                newErrors.name = "Name must be at least 3 characters.";
+            }
+        }
+
+        if (!formData.email || !emailRegex.test(formData.email)) {
+            newErrors.email = "Invalid email format.";
+        }
+
+        if (!showOtpField) {
+            if (!formData.password || formData.password.length < 6) {
+                newErrors.password = "Password must be at least 6 characters.";
+            }
+        }
+
+        if (showOtpField && isSignup && !formData.otp) {
+            newErrors.otp = "OTP is required.";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleSendOtp = (e) => {
         e.preventDefault();
-        console.log("Sending OTP to:", { email: formData.email, name: formData.name });
+        if (!validate()) return;
         dispatch(sendOtp({ email: formData.email, name: formData.name }));
-        setShowOtpField(true)
+        setShowOtpField(true);
     };
 
     const handleSignup = (e) => {
         e.preventDefault();
-        // Make API call to send OTP to email
-        console.log("Sending OTP to:", formData.email);
+        if (!validate()) return;
         dispatch(signup(formData));
     };
 
     const handleLogin = (e) => {
         e.preventDefault();
-        // Login API call
-        console.log("Logging in:", formData);
+        if (!validate()) return;
         dispatch(login(formData));
     };
 
-    useEffect(()=>{
-        if(LoginStore?.user?.message){
-            alert(LoginStore?.user?.message)
+    useEffect(() => {
+        const msg = LoginStore?.user?.message;
+        if (msg) {
+            alert(msg);
+
+            if (msg === "User registered successfully") {
+                setIsSignup(false);
+                setShowOtpField(false);
+                setFormData({ name: "", email: "", password: "", otp: "" });
+            }
+
+            if (msg === "Login successful") {
+                localStorage.setItem("token", LoginStore?.user?.token);
+                navigate("/resume"); // Redirect after login
+            }
         }
-    },[LoginStore?.user?.message])
+    }, [LoginStore?.user?.message]);
 
     return (
         <div className="auth-container">
@@ -56,14 +99,16 @@ const LoginSignupToggle = () => {
                 <h2>{isSignup ? "Sign Up" : "Log In"}</h2>
                 <form>
                     {isSignup && !showOtpField && (
-                        <input
-                            type="text"
-                            name="name"
-                            placeholder="Full Name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            required
-                        />
+                        <>
+                            <input
+                                type="text"
+                                name="name"
+                                placeholder="Full Name"
+                                value={formData.name}
+                                onChange={handleChange}
+                            />
+                            {errors.name && <p className="error-text">{errors.name}</p>}
+                        </>
                     )}
                     <input
                         type="email"
@@ -71,18 +116,22 @@ const LoginSignupToggle = () => {
                         placeholder="Email"
                         value={formData.email}
                         onChange={handleChange}
-                        required
                     />
+                    {errors.email && <p className="error-text">{errors.email}</p>}
+
                     {!showOtpField && (
-                        <input
-                            type="password"
-                            name="password"
-                            placeholder="Password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                        />
+                        <>
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="Password"
+                                value={formData.password}
+                                onChange={handleChange}
+                            />
+                            {errors.password && <p className="error-text">{errors.password}</p>}
+                        </>
                     )}
+
                     {isSignup ? (
                         showOtpField ? (
                             <>
@@ -92,8 +141,8 @@ const LoginSignupToggle = () => {
                                     placeholder="Enter OTP"
                                     value={formData.otp}
                                     onChange={handleChange}
-                                    required
                                 />
+                                {errors.otp && <p className="error-text">{errors.otp}</p>}
                                 <button onClick={handleSignup}>Verify OTP</button>
                             </>
                         ) : (
@@ -103,11 +152,14 @@ const LoginSignupToggle = () => {
                         <button onClick={handleLogin}>Login</button>
                     )}
                 </form>
+
                 <p className="toggle-link">
                     {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
                     <span onClick={() => {
                         setIsSignup(!isSignup);
                         setShowOtpField(false);
+                        setFormData({ name: "", email: "", password: "", otp: "" });
+                        setErrors({});
                     }}>
                         {isSignup ? "Log In" : "Sign Up"}
                     </span>
